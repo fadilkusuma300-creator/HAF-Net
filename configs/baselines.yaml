@@ -1,0 +1,19 @@
+selection_metric: pr_auc
+
+classical:
+  xgboost:
+    - {n_estimators: 300, max_depth: 3, learning_rate: 0.05, subsample: 0.85, colsample_bytree: 0.85}
+    - {n_estimators: 450, max_depth: 4, learning_rate: 0.03, subsample: 0.90, colsample_bytree: 0.90}
+  lightgbm:
+    - {n_estimators: 300, num_leaves: 15, learning_rate: 0.05, subsample: 0.85, colsample_bytree: 0.85}
+    - {n_estimators: 450, num_leaves: 31, learning_rate: 0.03, subsample: 0.90, colsample_bytree: 0.90}
+  catboost:
+    - {iterations: 300, depth: 5, learning_rate: 0.05}
+    - {iterations: 450, depth: 6, learning_rate: 0.03}
+
+neural:
+  learning_rate: [0.0001, 0.0005, 0.001]
+  width: [32, 64, 128]
+  dropout: [0.1, 0.2, 0.3]
+  max_epochs: 100
+  patience: 15

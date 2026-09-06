@@ -1,0 +1,114 @@
+dataset,feature_id,feature_label,level1_group,level2_subgroup,source_url
+Taiwan,T1,ROA(C) before interest and depreciation before interest,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T2,ROA(A) before interest and % after tax,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T3,ROA(B) before interest and depreciation after tax,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T4,Operating Gross Margin,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T5,Realized Sales Gross Margin,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T6,Operating Profit Rate,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T7,Pre-tax net Interest Rate,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T8,After-tax net Interest Rate,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T9,Non-industry income and expenditure/revenue,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T10,Continuous interest rate (after tax),Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T11,Operating Expense Rate,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T12,Research and development expense rate,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T13,Cash flow rate,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T14,Interest-bearing debt interest rate,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T15,Tax rate (A),Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T16,Net Value Per Share (B),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T17,Net Value Per Share (A),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T18,Net Value Per Share (C),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T19,Persistent EPS in the Last Four Seasons,Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T20,Cash Flow Per Share,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T21,Revenue Per Share (Yuan ¥),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T22,Operating Profit Per Share (Yuan ¥),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T23,Per Share Net profit before tax (Yuan ¥),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T24,Realized Sales Gross Profit Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T25,Operating Profit Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T26,After-tax Net Profit Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T27,Regular Net Profit Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T28,Continuous Net Profit Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T29,Total Asset Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T30,Net Value Growth Rate,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T31,Total Asset Return Growth Rate Ratio,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T32,Cash Reinvestment %,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T33,Current Ratio,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T34,Quick Ratio,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T35,Interest Expense Ratio,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T36,Total debt/Total net worth,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T37,Debt ratio %,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T38,Net worth/Assets,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T39,Long-term fund suitability ratio (A),Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T40,Borrowing dependency,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T41,Contingent liabilities/Net worth,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T42,Operating profit/Paid-in capital,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T43,Net profit before tax/Paid-in capital,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T44,Inventory and accounts receivable/Net value,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T45,Total Asset Turnover,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T46,Accounts Receivable Turnover,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T47,Average Collection Days,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T48,Inventory Turnover Rate (times),Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T49,Fixed Assets Turnover Frequency,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T50,Net Worth Turnover Rate (times),Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T51,Revenue per person,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T52,Operating profit per person,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T53,Allocation rate per person,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T54,Working Capital to Total Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T55,Quick Assets/Total Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T56,Current Assets/Total Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T57,Cash/Total Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T58,Quick Assets/Current Liability,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T59,Cash/Current Liability,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T60,Current Liability to Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T61,Operating Funds to Liability,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T62,Inventory/Working Capital,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T63,Inventory/Current Liability,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T64,Current Liabilities/Liability,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T65,Working Capital/Equity,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T66,Current Liabilities/Equity,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T67,Long-term Liability to Current Assets,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T68,Retained Earnings to Total Assets,Growth/capital capacity,Growth and reinvestment,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T69,Total income/Total expense,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T70,Total expense/Assets,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T71,Current Asset Turnover Rate,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T72,Quick Asset Turnover Rate,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T73,Working capital Turnover Rate,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T74,Cash Turnover Rate,Operational efficiency,Asset and working-capital turnover,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T75,Cash Flow to Sales,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T76,Fixed Assets to Assets,Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T77,Current Liability to Liability,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T78,Current Liability to Equity,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T79,Equity to Long-term Liability,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T80,Cash Flow to Total Assets,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T81,Cash Flow to Liability,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T82,CFO to Assets,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T83,Cash Flow to Equity,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T84,Current Liability to Current Assets,Solvency,Liquidity and short-term coverage,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T85,Liability-Assets Flag,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T86,Net Income to Total Assets,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T87,Total assets to GNP price,Growth/capital capacity,Capital base and per-share capacity,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T88,No-credit Interval,Operational efficiency,Resource productivity and cash conversion,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T89,Gross Profit to Sales,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T90,Net Income to Stockholder's Equity,Profitability,Returns and margins,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T91,Liability to Equity,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T92,Degree of Financial Leverage (DFL),Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T93,Interest Coverage Ratio (Interest expense to EBIT),Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T94,Net Income Flag,Profitability,Earnings quality and cost burden,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+Taiwan,T95,Equity to Liability,Solvency,Leverage and debt service,https://archive.ics.uci.edu/dataset/572/taiwanese+bankruptcy+prediction
+American,X1,Current assets,Solvency/obligations,Current liquidity position,https://doi.org/10.3390/fi14080244
+American,X2,Cost of goods sold,Operating activity,Cost structure,https://doi.org/10.3390/fi14080244
+American,X3,Depreciation and amortization,Operating activity,Cost structure,https://doi.org/10.3390/fi14080244
+American,X4,EBITDA,Profitability/earnings,Operating earnings,https://doi.org/10.3390/fi14080244
+American,X5,Inventory,Operating activity,Working-capital activity,https://doi.org/10.3390/fi14080244
+American,X6,Net income,Profitability/earnings,Net and accumulated earnings,https://doi.org/10.3390/fi14080244
+American,X7,Total receivables,Operating activity,Working-capital activity,https://doi.org/10.3390/fi14080244
+American,X8,Market value,Scale/market position,Market and asset scale,https://doi.org/10.3390/fi14080244
+American,X9,Net sales,Scale/market position,Revenue and sales scale,https://doi.org/10.3390/fi14080244
+American,X10,Total assets,Scale/market position,Market and asset scale,https://doi.org/10.3390/fi14080244
+American,X11,Total long-term debt,Solvency/obligations,Long-term and total obligations,https://doi.org/10.3390/fi14080244
+American,X12,EBIT,Profitability/earnings,Operating earnings,https://doi.org/10.3390/fi14080244
+American,X13,Gross profit,Profitability/earnings,Operating earnings,https://doi.org/10.3390/fi14080244
+American,X14,Total current liabilities,Solvency/obligations,Current liquidity position,https://doi.org/10.3390/fi14080244
+American,X15,Retained earnings,Profitability/earnings,Net and accumulated earnings,https://doi.org/10.3390/fi14080244
+American,X16,Total revenue,Scale/market position,Revenue and sales scale,https://doi.org/10.3390/fi14080244
+American,X17,Total liabilities,Solvency/obligations,Long-term and total obligations,https://doi.org/10.3390/fi14080244
+American,X18,Total operating expenses,Operating activity,Cost structure,https://doi.org/10.3390/fi14080244

@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: "HAF-Net: Hierarchical Attention Learning for Imbalanced Financial Distress Prediction"
+message: "If you use this software in academic work, please cite the HAF-Net article and the original benchmark datasets."
+type: software
+authors:
+  - family-names: Meng
+    given-names: Zuhui
+  - family-names: Wang
+    given-names: Tinghao
+  - family-names: Zhang
+    given-names: Lili
+version: 1.0.0
+date-released: 2026-09-06
+license: MIT
+repository-code: "https://github.com/fadilkusuma300-creator/HAF-Net"

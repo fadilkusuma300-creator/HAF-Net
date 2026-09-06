@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hafnet"
+version = "1.0.0"
+description = "Hierarchical Attention Learning for Imbalanced Financial Distress Prediction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Zuhui Meng"},
+  {name = "Tinghao Wang"},
+  {name = "Lili Zhang"}
+]
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "scipy>=1.11",
+  "scikit-learn>=1.4",
+  "torch>=2.1",
+  "PyYAML>=6.0",
+  "matplotlib>=3.8",
+  "xgboost>=2.0",
+  "lightgbm>=4.0",
+  "catboost>=1.2",
+  "imbalanced-learn>=0.12",
+  "tabulate>=0.9"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

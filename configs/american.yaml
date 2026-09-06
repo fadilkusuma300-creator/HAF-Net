@@ -1,0 +1,33 @@
+dataset:
+  name: american
+  path: data/raw/american/american_bankruptcy_dataset.csv
+  mapping: metadata/feature_group_mapping.csv
+  split: chronological
+  train_years: [1999, 2011]
+  validation_years: [2012, 2014]
+  test_years: [2015, 2018]
+
+model:
+  subgroup_dim: 32
+  fusion_dim: 64
+  dropout: 0.10
+
+loss:
+  beta: 0.999
+  gamma: 2.0
+  lambda_tcl: 0.10
+  lambda_tcar: 0.0
+  rho: 0.50
+  temperature: 0.10
+  negatives: 8
+  anchor_offset: 2
+  positive_offset: 1
+
+training:
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.00001
+  max_epochs: 100
+  patience: 15
+  seeds: [42, 123, 456, 789, 1024, 2024, 3456, 5678, 7890, 9999]
+  device: auto
