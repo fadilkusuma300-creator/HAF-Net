@@ -4,31 +4,30 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from hafnet.config import load_config
 from hafnet.data import prepare_dataset
-from hafnet.experiment import run_to_record
-from hafnet.trainer import train_one_seed
-from hafnet.utils import ensure_dir
 
 DEFAULT_GRIDS = {
-    "lambda_tcar": [0.00, 0.02, 0.05, 0.08, 0.10],
-    "beta": [0.990, 0.995, 0.999, 0.9995],
-    "gamma": [0.0, 1.0, 2.0, 3.0, 4.0],
+    "lambda_tcar": [0.00, 0.02, 0.05, 0.10, 0.20],
+    "beta": [0.90, 0.99, 0.999, 0.9999],
+    "gamma": [0.0, 1.0, 2.0, 3.0, 5.0],
+    "rho": [0.0, 0.25, 0.50, 0.75, 1.0],
 }
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Taiwan HAF-Net hyperparameter sensitivity analysis.")
     parser.add_argument("--config", default="configs/taiwan.yaml")
-    parser.add_argument("--parameter", choices=["lambda_tcar", "beta", "gamma", "all"], default="all")
+    parser.add_argument("--parameter", choices=[*DEFAULT_GRIDS, "all"], default="all")
     parser.add_argument("--seeds", nargs="*", type=int, default=None)
+    parser.add_argument("--parameters", required=True)
     parser.add_argument("--output", default="outputs/sensitivity")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def set_parameter(config: dict, parameter: str, value: float) -> dict:
@@ -38,13 +37,17 @@ def set_parameter(config: dict, parameter: str, value: float) -> dict:
 
 
 def run_parameter(config: dict, parameter: str, seeds: list[int]) -> pd.DataFrame:
+    from hafnet.experiment import run_to_record
+    from hafnet.trainer import train_one_seed
+
     rows: list[dict] = []
     for value in DEFAULT_GRIDS[parameter]:
         current = set_parameter(config, parameter, value)
         for seed in seeds:
-            dataset = prepare_dataset(current, seed)
-            result = train_one_seed(dataset, current, seed=seed, variant="full")
+            dataset = prepare_dataset(current)
+            result = train_one_seed(dataset, current, seed=seed, variant="full", evaluate_test=False)
             row = run_to_record(result)
+            row = {key: value for key, value in row.items() if not key.startswith("test_")}
             row["parameter"] = parameter
             row["value"] = float(value)
             rows.append(row)
@@ -68,36 +71,22 @@ def summarize(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def make_figure(summary: pd.DataFrame, output: Path) -> None:
-    parameters = [parameter for parameter in ("lambda_tcar", "beta", "gamma") if parameter in set(summary["parameter"])]
-    if not parameters:
-        return
-    figure, axes = plt.subplots(1, len(parameters), figsize=(4.4 * len(parameters), 3.6), squeeze=False)
-    for axis, parameter in zip(axes[0], parameters):
-        block = summary[summary["parameter"] == parameter].sort_values("value")
-        axis.errorbar(
-            block["value"],
-            block["validation_f1_mean"],
-            yerr=block["validation_f1_std"],
-            marker="o",
-            capsize=3,
-        )
-        axis.set_xlabel(parameter)
-        axis.set_ylabel("Validation F1")
-        axis.grid(alpha=0.2)
-    figure.tight_layout()
-    figure.savefig(output / "sensitivity.pdf", bbox_inches="tight")
-    figure.savefig(output / "sensitivity.png", dpi=600, bbox_inches="tight")
-    plt.close(figure)
-
 
 if __name__ == "__main__":
     args = parse_args()
+    from hafnet.utils import ensure_dir, validate_disjoint_seeds, validate_seed_list, write_json
+
     config = load_config(args.config)
+    from hafnet.provenance import load_selected_config
+    config, selected_parameters = load_selected_config(config, args.parameters)
     if str(config["dataset"]["name"]).lower() != "taiwan":
         raise ValueError("The manuscript sensitivity analysis is defined for the Taiwan benchmark.")
 
-    seeds = list(args.seeds if args.seeds is not None else config["training"]["seeds"])
+    seeds = validate_seed_list(
+        args.seeds if args.seeds is not None else config["training"].get("tuning_seeds", config["training"]["seeds"]),
+        "Sensitivity seeds",
+    )
+    validate_disjoint_seeds(seeds, config["training"].get("seeds", []))
     parameters = list(DEFAULT_GRIDS) if args.parameter == "all" else [args.parameter]
     output = ensure_dir(args.output)
     blocks = [run_parameter(config, parameter, seeds) for parameter in parameters]
@@ -105,5 +94,23 @@ if __name__ == "__main__":
     summary = summarize(runs)
     runs.to_csv(output / "sensitivity_runs.csv", index=False)
     summary.to_csv(output / "sensitivity_summary.csv", index=False)
-    make_figure(summary, output)
+    selected_values = {parameter: float(config["loss"][parameter]) for parameter in parameters}
+    write_json(
+        output / "sensitivity_manifest.json",
+        {
+            "dataset": str(config["dataset"]["name"]).lower(),
+            "seeds": seeds,
+            "grids": {parameter: DEFAULT_GRIDS[parameter] for parameter in parameters},
+            "display_metric": "validation_average_precision",
+            "parameter_selection": "none; configured reference values are highlighted",
+            "selected_architecture": {
+                key: config["model"][key]
+                for key in ("subgroup_dim", "fusion_dim", "dropout")
+            },
+            "test_evaluated": False,
+            "reference_values": selected_values,
+        },
+    )
+    from plot_sensitivity import make_figure
+    make_figure(summary, output, selected_values)
     print(summary.to_string(index=False))

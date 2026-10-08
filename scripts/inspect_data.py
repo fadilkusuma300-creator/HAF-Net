@@ -13,7 +13,6 @@ from hafnet.data import prepare_dataset
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Display HAF-Net dataset and hierarchy information.")
     parser.add_argument("--config", required=True, help="Dataset YAML configuration")
-    parser.add_argument("--seed", type=int, default=42, help="Seed used for the Taiwan stratified split")
     return parser.parse_args()
 
 
@@ -27,7 +26,7 @@ def class_summary(y: np.ndarray) -> str:
 if __name__ == "__main__":
     args = parse_args()
     config = load_config(args.config)
-    dataset = prepare_dataset(config, args.seed)
+    dataset = prepare_dataset(config)
 
     print(f"dataset: {dataset.name}")
     print(f"features: {len(dataset.feature_ids)}")

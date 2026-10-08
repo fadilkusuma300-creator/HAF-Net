@@ -1,19 +1,71 @@
-selection_metric: pr_auc
+selection_metric: average_precision
 
 classical:
   xgboost:
-    - {n_estimators: 300, max_depth: 3, learning_rate: 0.05, subsample: 0.85, colsample_bytree: 0.85}
-    - {n_estimators: 450, max_depth: 4, learning_rate: 0.03, subsample: 0.90, colsample_bytree: 0.90}
+    n_estimators: [300, 600, 900]
+    max_depth: [3, 4, 6]
+    learning_rate: [0.01, 0.03, 0.05]
+    subsample: 0.85
+    colsample_bytree: 0.85
   lightgbm:
-    - {n_estimators: 300, num_leaves: 15, learning_rate: 0.05, subsample: 0.85, colsample_bytree: 0.85}
-    - {n_estimators: 450, num_leaves: 31, learning_rate: 0.03, subsample: 0.90, colsample_bytree: 0.90}
+    n_estimators: [300, 600, 900]
+    num_leaves: [15, 31, 63]
+    learning_rate: [0.01, 0.03, 0.05]
+    subsample: 0.85
+    colsample_bytree: 0.85
   catboost:
-    - {iterations: 300, depth: 5, learning_rate: 0.05}
-    - {iterations: 450, depth: 6, learning_rate: 0.03}
+    iterations: [300, 600, 900]
+    depth: [4, 6, 8]
+    learning_rate: [0.01, 0.03, 0.05]
 
+# Model-specific grids keep 27 candidates for each neural comparator while
+# tuning architecture-relevant parameters rather than applying a single generic
+# grid to unrelated models.
 neural:
-  learning_rate: [0.0001, 0.0005, 0.001]
-  width: [32, 64, 128]
-  dropout: [0.1, 0.2, 0.3]
-  max_epochs: 100
-  patience: 15
+  tabnet:
+    learning_rate: [0.0001, 0.0005, 0.001]
+    width: [32, 64, 128]
+    n_steps: [3, 4, 5]
+    gamma: 1.5
+    max_epochs: 100
+    patience: 15
+  tabtransformer_numeric_adapted:
+    learning_rate: [0.0001, 0.0005, 0.001]
+    width: [32, 64, 128]
+    dropout: [0.1, 0.2, 0.3]
+    layers: 4
+    max_epochs: 100
+    patience: 15
+  ft_transformer:
+    learning_rate: [0.0001, 0.0005, 0.001]
+    width: [32, 64, 128]
+    dropout: [0.1, 0.2, 0.3]
+    layers: 3
+    max_epochs: 100
+    patience: 15
+  trompt:
+    learning_rate: [0.0001, 0.0005, 0.001]
+    width: [64, 128, 192]
+    num_prompts: [32, 64, 128]
+    layers: 6
+    max_epochs: 100
+    patience: 15
+
+two_stage_lightgbm:
+  base_settings:
+    - {n_estimators: 300, num_leaves: 15, learning_rate: 0.03, subsample: 0.85, colsample_bytree: 0.85}
+    - {n_estimators: 600, num_leaves: 15, learning_rate: 0.05, subsample: 0.90, colsample_bytree: 0.90}
+    - {n_estimators: 300, num_leaves: 31, learning_rate: 0.05, subsample: 0.85, colsample_bytree: 0.85}
+    - {n_estimators: 600, num_leaves: 31, learning_rate: 0.03, subsample: 0.90, colsample_bytree: 0.90}
+  resampling: [none, smote, smote_enn, kmeans_centroids]
+  cv_folds: 3
+  importance_tail_mass: 0.01
+  accuracy_min_improvement: 0.005
+  wrapper_patience: 3
+  wrapper_min_features: 2
+
+cs_stacking:
+  prefilter_features: [8, 12, 18]
+  feature_count: [4, 6, 8]
+  feature_selection_folds: 2
+  stacking_folds: 3

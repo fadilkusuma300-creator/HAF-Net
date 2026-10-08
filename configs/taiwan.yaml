@@ -1,8 +1,13 @@
 dataset:
   name: taiwan
   path: data/raw/taiwan/data.csv
+  sha256: 67bf2e7c75490f7ad3f76bbce57d49cdc25967cdab607527b94f944863fa14d8
   mapping: metadata/feature_group_mapping.csv
   split: stratified_80_10_10
+  split_seed: 42
+
+controls:
+  random_hfge_seed: 2026
 
 model:
   subgroup_dim: 32
@@ -15,12 +20,14 @@ loss:
   lambda_tcl: 0.0
   lambda_tcar: 0.05
   rho: 0.50
-  theory_prior: [0.35, 0.30, 0.20, 0.15]
+  domain_prior: [0.35, 0.30, 0.20, 0.15]
+  uniform_domain_prior: [0.25, 0.25, 0.25, 0.25]
   prior_permutation: [1, 3, 0, 2]
   temperature: 0.10
   negatives: 8
 
 training:
+  tuning_seeds: [17, 29, 53]
   batch_size: 128
   learning_rate: 0.001
   weight_decay: 0.00001

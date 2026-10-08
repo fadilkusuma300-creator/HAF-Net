@@ -33,18 +33,20 @@ def combined_prior(
     x_train_standardized: np.ndarray,
     y_train: np.ndarray,
     hierarchy: HierarchySpec,
-    theory: list[float] | tuple[float, ...],
+    domain_prior: list[float] | tuple[float, ...],
     rho: float,
 ) -> torch.Tensor:
-    """Combine the financial theory prior and the training-derived group prior."""
-    if not 0 < float(rho) <= 1:
-        raise ValueError("rho must satisfy 0 < rho <= 1.")
-    theory_array = np.asarray(theory, dtype=float)
-    if theory_array.shape != (len(hierarchy.groups),):
-        raise ValueError("Theory prior dimension does not match the number of level-1 groups.")
-    theory_array = theory_array / theory_array.sum()
+    """Combine a heuristic domain prior with the training-derived group prior."""
+    if not 0 <= float(rho) <= 1:
+        raise ValueError("rho must satisfy 0 <= rho <= 1.")
+    domain_array = np.asarray(domain_prior, dtype=float)
+    if domain_array.shape != (len(hierarchy.groups),):
+        raise ValueError("Domain prior dimension does not match the number of level-1 groups.")
+    if not np.all(np.isfinite(domain_array)) or np.any(domain_array <= 0) or domain_array.sum() <= 0:
+        raise ValueError("Domain-prior weights must be finite positive values.")
+    domain_array = domain_array / domain_array.sum()
     statistical = statistical_group_prior(x_train_standardized, y_train, hierarchy)
-    prior = float(rho) * theory_array + (1.0 - float(rho)) * statistical
+    prior = float(rho) * domain_array + (1.0 - float(rho)) * statistical
     prior = prior / prior.sum()
     return torch.tensor(prior, dtype=torch.float32)
 

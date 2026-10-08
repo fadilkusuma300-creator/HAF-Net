@@ -51,6 +51,7 @@ class HFGE(nn.Module):
         fusion_dim: int = 64,
         dropout: float = 0.1,
         use_residual: bool = True,
+        equal_intragroup: bool = False,
     ) -> None:
         super().__init__()
         if input_dim != len(hierarchy.feature_ids):
@@ -59,9 +60,10 @@ class HFGE(nn.Module):
         self.subgroup_dim = int(subgroup_dim)
         self.fusion_dim = int(fusion_dim)
         self.use_residual = bool(use_residual)
+        self.equal_intragroup = bool(equal_intragroup)
 
         self.subgroup_encoders = nn.ModuleList()
-        self.intra_attention = nn.ModuleList()
+        self.intra_attention = None if self.equal_intragroup else nn.ModuleList()
         self._subgroup_indices: list[list[torch.Tensor]] = []
 
         for group in hierarchy.groups:
@@ -71,7 +73,8 @@ class HFGE(nn.Module):
                 group_encoders.append(SubgroupEncoder(len(subgroup.indices), self.subgroup_dim, dropout))
                 group_indices.append(torch.tensor(subgroup.indices, dtype=torch.long))
             self.subgroup_encoders.append(group_encoders)
-            self.intra_attention.append(AdditiveAttention(self.subgroup_dim))
+            if self.intra_attention is not None:
+                self.intra_attention.append(AdditiveAttention(self.subgroup_dim))
             self._subgroup_indices.append(group_indices)
 
         self.inter_attention = AdditiveAttention(self.subgroup_dim)
@@ -92,7 +95,14 @@ class HFGE(nn.Module):
                 subgroup_input = torch.index_select(x, dim=1, index=indices)
                 encoded_subgroups.append(encoder(subgroup_input))
             subgroup_stack = torch.stack(encoded_subgroups, dim=1)
-            group_vector, weights = self.intra_attention[group_index](subgroup_stack)
+            if self.intra_attention is None:
+                weights = subgroup_stack.new_full(
+                    subgroup_stack.shape[:2],
+                    1.0 / subgroup_stack.shape[1],
+                )
+                group_vector = torch.sum(subgroup_stack * weights.unsqueeze(-1), dim=1)
+            else:
+                group_vector, weights = self.intra_attention[group_index](subgroup_stack)
             group_vectors.append(group_vector)
             subgroup_weights.append(weights)
 
@@ -120,6 +130,7 @@ class HAFNet(nn.Module):
         fusion_dim: int = 64,
         dropout: float = 0.1,
         use_residual: bool = True,
+        equal_intragroup: bool = False,
     ) -> None:
         super().__init__()
         self.encoder = HFGE(
@@ -129,6 +140,7 @@ class HAFNet(nn.Module):
             fusion_dim=fusion_dim,
             dropout=dropout,
             use_residual=use_residual,
+            equal_intragroup=equal_intragroup,
         )
         self.classifier = nn.Linear(fusion_dim, 1)
 

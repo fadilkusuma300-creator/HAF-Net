@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import hashlib
 from typing import Any
 
 import numpy as np
@@ -10,6 +11,7 @@ from sklearn.model_selection import train_test_split
 
 from .grouping import HierarchySpec, build_hierarchy
 from .preprocess import TrainOnlyPreprocessor
+from .validation import binary_labels, integral_values
 
 
 @dataclass
@@ -63,7 +65,7 @@ def load_taiwan(path: str | Path) -> tuple[pd.DataFrame, np.ndarray, tuple[str, 
     feature_labels = tuple(str(column) for column in features.columns)
     features.columns = [f"T{index}" for index in range(1, 96)]
     features = features.apply(pd.to_numeric, errors="raise")
-    y = pd.to_numeric(frame[target_column], errors="raise").astype(int).to_numpy()
+    y = binary_labels(pd.to_numeric(frame[target_column], errors="raise").to_numpy())
     if set(np.unique(y)).difference({0, 1}):
         raise ValueError("Taiwan target must be binary.")
 
@@ -82,12 +84,21 @@ def _binary_status(series: pd.Series) -> np.ndarray:
     return text.isin(positive).astype(int).to_numpy()
 
 
-def load_american(path: str | Path) -> tuple[pd.DataFrame, np.ndarray, tuple[str, ...]]:
+def load_american(
+    path: str | Path, *, target_mode: str | None = None
+) -> tuple[pd.DataFrame, np.ndarray, tuple[str, ...]]:
     """Load the public American firm-year table using X1-X18 as predictive inputs.
 
-    The benchmark already labels the fiscal year immediately before a bankruptcy filing
-    as the positive class. The loader therefore uses the public row-level label directly.
+    terminal_failed_proxy marks the final observed row of each failed firm.
+    The release does not establish that this row precedes bankruptcy by one year.
+    Selecting the proxy explicitly prevents silently treating it as a dated event label.
     """
+    if target_mode != "terminal_failed_proxy":
+        raise ValueError(
+            "The public American table has no verified filing-year field. "
+            "Set dataset.target_mode='terminal_failed_proxy' explicitly to use "
+            "the terminal-observation proxy; it is not a verified next-year target."
+        )
     frame = _clean_columns(pd.read_csv(path))
     feature_ids = [f"X{index}" for index in range(1, 19)]
     year_column = "year" if "year" in frame.columns else "fyear" if "fyear" in frame.columns else None
@@ -99,18 +110,29 @@ def load_american(path: str | Path) -> tuple[pd.DataFrame, np.ndarray, tuple[str
         raise ValueError(f"American data is missing columns: {missing}")
 
     data = frame.copy()
-    data[year_column] = pd.to_numeric(data[year_column], errors="raise").astype(int)
+    data[year_column] = integral_values(pd.to_numeric(data[year_column], errors="raise"), name="Fiscal years")
+    if data["company_name"].isna().any() or data["company_name"].astype(str).str.strip().eq("").any():
+        raise ValueError("American company identifiers must be present for the temporal protocol.")
+    if data.duplicated(["company_name", year_column]).any():
+        raise ValueError("American data must contain at most one row per company and fiscal year.")
     for feature in feature_ids:
         data[feature] = pd.to_numeric(data[feature], errors="raise")
-    y = _binary_status(data["status_label"])
-
-    # A positive row is the fiscal year immediately before filing, so the filing year is +1.
-    event_year = np.where(y == 1, data[year_column].to_numpy(dtype=int) + 1, np.nan)
+    firm_status = _binary_status(data["status_label"])
+    inconsistent = (
+        pd.Series(firm_status, index=data.index)
+        .groupby(data["company_name"])
+        .nunique()
+        .gt(1)
+    )
+    if inconsistent.any():
+        raise ValueError("American status_label must be constant within each company.")
+    final_year = data.groupby("company_name")[year_column].transform("max").to_numpy(dtype=int)
+    y = ((firm_status == 1) & (data[year_column].to_numpy(dtype=int) == final_year)).astype(int)
     output = data[feature_ids].copy()
     output["row_id"] = np.arange(len(output), dtype=int)
     output["company_name"] = data["company_name"].astype(str).to_numpy()
     output["year"] = data[year_column].to_numpy(dtype=int)
-    output["event_year"] = event_year
+    output["target_definition"] = target_mode
     return output, y, tuple(feature_ids)
 
 
@@ -135,16 +157,22 @@ def _split_american(frame: pd.DataFrame, config: dict[str, Any]) -> tuple[np.nda
     train_low, train_high = config.get("train_years", [1999, 2011])
     validation_low, validation_high = config.get("validation_years", [2012, 2014])
     test_low, test_high = config.get("test_years", [2015, 2018])
-    years = frame["year"].to_numpy(dtype=int)
+    boundaries = integral_values([train_low, train_high, validation_low, validation_high, test_low, test_high], name="Year boundaries")
+    if not (train_low <= train_high < validation_low <= validation_high < test_low <= test_high):
+        raise ValueError("Year ranges must be ordered: training, validation, then test.")
+    years = integral_values(frame["year"], name="Fiscal years")
     train_idx = np.flatnonzero((years >= train_low) & (years <= train_high))
     validation_idx = np.flatnonzero((years >= validation_low) & (years <= validation_high))
     test_idx = np.flatnonzero((years >= test_low) & (years <= test_high))
     if min(len(train_idx), len(validation_idx), len(test_idx)) == 0:
         raise ValueError("One or more chronological American partitions are empty.")
+    assigned = np.concatenate((train_idx, validation_idx, test_idx))
+    if len(assigned) != len(frame) or len(np.unique(assigned)) != len(frame):
+        raise ValueError("American year ranges must assign every row to exactly one partition.")
     return train_idx, validation_idx, test_idx
 
 
-def prepare_dataset(config: dict[str, Any], seed: int) -> PreparedDataset:
+def prepare_dataset(config: dict[str, Any]) -> PreparedDataset:
     """Load, split, preprocess, and attach the fixed feature hierarchy."""
     dataset_config = config["dataset"]
     dataset_name = str(dataset_config["name"]).lower()
@@ -154,21 +182,34 @@ def prepare_dataset(config: dict[str, Any], seed: int) -> PreparedDataset:
             f"Dataset file not found: {dataset_path}. See data/README.md or run scripts/download_data.py."
         )
 
+    expected_hash = dataset_config.get("sha256")
+    if expected_hash and hashlib.sha256(dataset_path.read_bytes()).hexdigest() != expected_hash:
+        raise ValueError("Dataset bytes do not match the configured SHA-256 fingerprint.")
+
     if dataset_name == "taiwan":
+        if dataset_config.get("split") != "stratified_80_10_10":
+            raise ValueError("Taiwan requires the fixed stratified_80_10_10 split protocol.")
         frame, y, feature_labels = load_taiwan(dataset_path)
         feature_ids = tuple(f"T{index}" for index in range(1, 96))
-        train_idx, validation_idx, test_idx = _split_taiwan(frame, y, seed)
+        split_seed = int(dataset_config.get("split_seed", 42))
+        train_idx, validation_idx, test_idx = _split_taiwan(frame, y, split_seed)
         metadata_columns = ["row_id"]
     elif dataset_name == "american":
-        frame, y, feature_labels = load_american(dataset_path)
+        if dataset_config.get("split") != "chronological":
+            raise ValueError("American requires the chronological split protocol.")
+        frame, y, feature_labels = load_american(
+            dataset_path, target_mode=dataset_config.get("target_mode")
+        )
         feature_ids = tuple(f"X{index}" for index in range(1, 19))
         train_idx, validation_idx, test_idx = _split_american(frame, dataset_config)
-        metadata_columns = ["row_id", "company_name", "year", "event_year"]
+        metadata_columns = ["row_id", "company_name", "year", "target_definition"]
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
     hierarchy = build_hierarchy(dataset_config["mapping"], dataset_name, feature_ids)
     x_all = frame[list(feature_ids)].to_numpy(dtype=np.float64)
+    for partition_indices in (train_idx, validation_idx, test_idx):
+        binary_labels(y[partition_indices], require_both=True)
     preprocessor = TrainOnlyPreprocessor()
     x_train = preprocessor.fit_transform(x_all[train_idx])
     x_validation = preprocessor.transform(x_all[validation_idx])

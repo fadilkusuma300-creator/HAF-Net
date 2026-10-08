@@ -1,11 +1,16 @@
 dataset:
   name: american
   path: data/raw/american/american_bankruptcy_dataset.csv
+  sha256: d64ed85ae786d75113455ae238feb24015d19716c10ec1de3a90a52eddc7b04a
   mapping: metadata/feature_group_mapping.csv
   split: chronological
+  target_mode: terminal_failed_proxy
   train_years: [1999, 2011]
   validation_years: [2012, 2014]
   test_years: [2015, 2018]
+
+controls:
+  random_hfge_seed: 2026
 
 model:
   subgroup_dim: 32
@@ -20,10 +25,10 @@ loss:
   rho: 0.50
   temperature: 0.10
   negatives: 8
-  anchor_offset: 2
-  positive_offset: 1
+  anchor_gap: 1
 
 training:
+  tuning_seeds: [17, 29, 53]
   batch_size: 256
   learning_rate: 0.001
   weight_decay: 0.00001
