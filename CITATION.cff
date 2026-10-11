@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "HAF-Net: Hierarchical Attention Learning for Imbalanced Financial Distress Prediction"
+title: "HAF-Net: Hierarchical Attention Fusion Network for Imbalanced Financial Distress Prediction"
 message: "If you use this software in academic work, please cite the HAF-Net article and the original benchmark datasets."
 type: software
 authors:

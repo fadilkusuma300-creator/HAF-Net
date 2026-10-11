@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hafnet"
 version = "1.0.0"
-description = "Hierarchical Attention Learning for Imbalanced Financial Distress Prediction"
+description = "Hierarchical Attention Fusion Network for Imbalanced Financial Distress Prediction"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

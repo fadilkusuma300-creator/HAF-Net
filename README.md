@@ -1,6 +1,6 @@
 # HAF-Net
 
-**Hierarchical Attention Learning for Imbalanced Financial Distress Prediction**
+**Hierarchical Attention Fusion Network for Imbalanced Financial Distress Prediction**
 
 This repository contains the code, configurations, public benchmark snapshots, feature-group definitions, and figure-generation utilities used with HAF-Net.
 
