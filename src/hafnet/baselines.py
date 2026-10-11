@@ -25,7 +25,12 @@ from .metrics import classification_metrics, select_f1_threshold
 from .preprocess import TrainOnlyPreprocessor
 from .utils import resolve_device, set_seed
 from .validation import binary_labels
-from .published_models import TabNet, TabTransformerNumericAdaptation, FTTransformer, Trompt
+from .adapted_models import (
+    FTTransformerNumericAdaptation,
+    TabNetNumericAdaptation,
+    TabTransformerNumericAdaptation,
+    TromptNumericAdaptation,
+)
 
 
 @dataclass
@@ -49,12 +54,12 @@ BASELINE_NAMES = (
     "lightgbm",
     "catboost",
     "smote_xgboost",
-    "tabnet",
+    "tabnet_numeric_adapted",
     "tabtransformer_numeric_adapted",
-    "ft_transformer",
-    "trompt",
-    "cs_stacking",
-    "two_stage_lightgbm",
+    "ft_transformer_numeric_adapted",
+    "trompt_numeric_adapted",
+    "csstacking_adapted",
+    "two_stage_lightgbm_adapted",
 )
 
 
@@ -120,13 +125,7 @@ def _fit_logistic(dataset: PreparedDataset, seed: int, evaluate_test: bool) -> B
     return _evaluate_probabilities("logistic", seed, dataset, validation_probability, test_probability, {})
 
 
-def _fit_tree(
-    name: str,
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any],
-    evaluate_test: bool,
-) -> BaselineResult:
+def _fit_tree(name: str, dataset: PreparedDataset, seed: int, parameters: dict[str, Any], evaluate_test: bool) -> BaselineResult:
     model = _tree_model(name, seed, parameters)
     model.fit(dataset.train.x, dataset.train.y)
     validation_probability = model.predict_proba(dataset.validation.x)[:, 1]
@@ -134,25 +133,13 @@ def _fit_tree(
     return _evaluate_probabilities(name, seed, dataset, validation_probability, test_probability, parameters)
 
 
-def _fit_smote_xgboost(
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any],
-    evaluate_test: bool,
-) -> BaselineResult:
+def _fit_smote_xgboost(dataset: PreparedDataset, seed: int, parameters: dict[str, Any], evaluate_test: bool) -> BaselineResult:
     x_resampled, y_resampled = _resample_training_data(dataset.train.x, dataset.train.y, "smote", seed)
     model = _tree_model("xgboost", seed, parameters)
     model.fit(x_resampled, y_resampled)
     validation_probability = model.predict_proba(dataset.validation.x)[:, 1]
     test_probability = model.predict_proba(dataset.test.x)[:, 1] if evaluate_test else None
-    return _evaluate_probabilities(
-        "smote_xgboost",
-        seed,
-        dataset,
-        validation_probability,
-        test_probability,
-        parameters,
-    )
+    return _evaluate_probabilities("smote_xgboost", seed, dataset, validation_probability, test_probability, parameters)
 
 
 def _safe_ratio(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
@@ -187,20 +174,12 @@ def _fit_altman(dataset: PreparedDataset, seed: int, evaluate_test: bool) -> Bas
         raise ValueError("The Altman Z-Score formula is defined for the American benchmark in this package.")
     validation_risk = altman_risk_score(dataset.raw_validation_frame)
     test_risk = altman_risk_score(dataset.raw_test_frame) if evaluate_test else None
-    threshold = float(np.nextafter(-2.675, np.inf))  # risk >= this is exactly Z < 2.675
+    threshold = float(np.nextafter(-2.675, np.inf))
     validation = classification_metrics(dataset.validation.y, validation_risk, threshold)
-    if test_risk is None:
-        test = {key: float("nan") for key in validation.keys()}
-    else:
-        test = classification_metrics(dataset.test.y, test_risk, threshold)
+    test = {key: float("nan") for key in validation.keys()} if test_risk is None else classification_metrics(dataset.test.y, test_risk, threshold)
     return BaselineResult(
-        name="altman",
-        seed=seed,
-        validation=validation,
-        test=test,
-        threshold=threshold,
-        parameters={"z_cutoff": 2.675},
-        validation_probability=np.asarray(validation_risk, dtype=float),
+        name="altman", seed=seed, validation=validation, test=test, threshold=threshold,
+        parameters={"z_cutoff": 2.675}, validation_probability=np.asarray(validation_risk, dtype=float),
         test_probability=None if test_risk is None else np.asarray(test_risk, dtype=float),
     )
 
@@ -271,15 +250,15 @@ class _ResampledLightGBMClassifier(ClassifierMixin, BaseEstimator):
         return self.model_.predict_proba(self.preprocessor_.transform(np.asarray(x, dtype=np.float64)))
 
 
-def _fit_two_stage_lightgbm(
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any],
-    evaluate_test: bool,
-) -> BaselineResult:
+def _fit_two_stage_lightgbm(dataset: PreparedDataset, seed: int, parameters: dict[str, Any], evaluate_test: bool) -> BaselineResult:
+    """Dataset-specific adaptation of the cited two-stage LightGBM workflow.
+
+    It transfers full-feature modeling, iterative wrapper feature reduction, and
+    the documented resampling alternatives while preserving the benchmark's own
+    feature space and split protocol.
+    """
     resampling = str(parameters.get("resampling", "smote_enn"))
-    excluded = {"resampling", "cv_folds", "importance_tail_mass", "wrapper_min_features",
-        "accuracy_min_improvement", "wrapper_patience"}
+    excluded = {"resampling", "cv_folds", "importance_tail_mass", "wrapper_min_features", "accuracy_min_improvement", "wrapper_patience"}
     lightgbm_parameters = {key: value for key, value in parameters.items() if key not in excluded}
     feature_columns = list(dataset.feature_ids)
     x_train = dataset.raw_train_frame[feature_columns].to_numpy(dtype=np.float64)
@@ -318,9 +297,7 @@ def _fit_two_stage_lightgbm(
         tp = int(np.sum((y == 1) & (prediction == 1)))
         trace.append({"feature_count": len(selected), "features": [feature_columns[i] for i in selected],
             "inner_true_positives": tp, "inner_recall": recall, "inner_accuracy": accuracy,
-            "inner_f1": float(f1_score(y, prediction, zero_division=0)),
-            "inner_kappa": float(cohen_kappa_score(y, prediction))})
-        # Recall selects the subset; fewer features break a recall tie, then accuracy.
+            "inner_f1": float(f1_score(y, prediction, zero_division=0)), "inner_kappa": float(cohen_kappa_score(y, prediction))})
         key = (recall, -len(selected), accuracy)
         if key > best_key:
             best_key, best_features = key, selected.copy()
@@ -346,8 +323,7 @@ def _fit_two_stage_lightgbm(
     final_model.fit(x_train[:, selected], y)
     validation_probability = final_model.predict_proba(x_validation[:, selected])[:, 1]
     test_probability = final_model.predict_proba(x_test[:, selected])[:, 1] if x_test is not None else None
-    return _evaluate_probabilities("two_stage_lightgbm", seed, dataset,
-        validation_probability, test_probability,
+    return _evaluate_probabilities("two_stage_lightgbm_adapted", seed, dataset, validation_probability, test_probability,
         {**parameters, "stage1_validation_average_precision": stage1_ap,
          "stage1_full_feature_count": int(x_train.shape[1]), "wrapper_trace": trace,
          "selected_features": [feature_columns[i] for i in selected],
@@ -406,56 +382,30 @@ def _select_cs_features(x: np.ndarray, y: np.ndarray, seed: int, parameters: dic
     return np.asarray(best_subset, dtype=int)
 
 
-def _fit_cs_stacking(
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any],
-    evaluate_test: bool,
-) -> BaselineResult:
-    """Select features within each stack fold, then fit cost-sensitive out-of-fold stacking."""
+def _fit_cs_stacking(dataset: PreparedDataset, seed: int, parameters: dict[str, Any], evaluate_test: bool) -> BaselineResult:
+    """Dataset-specific CSStacking adaptation with nested feature selection.
+
+    XGBoost importance prefiltering and forward selection are fitted within the
+    training portion of each stacking fold before cost-sensitive base learners
+    and the balanced logistic meta-learner are estimated.
+    """
     y_train = dataset.train.y
     feature_columns = list(dataset.feature_ids)
     x_train = dataset.raw_train_frame[feature_columns].to_numpy(dtype=np.float64)
     x_validation_raw = dataset.raw_validation_frame[feature_columns].to_numpy(dtype=np.float64)
-    x_test_raw = (
-        dataset.raw_test_frame[feature_columns].to_numpy(dtype=np.float64)
-        if evaluate_test
-        else None
-    )
+    x_test_raw = dataset.raw_test_frame[feature_columns].to_numpy(dtype=np.float64) if evaluate_test else None
 
     def base_models(fold_seed: int, positive_weight: float):
         return [
-            XGBClassifier(
-                n_estimators=300,
-                max_depth=4,
-                learning_rate=0.04,
-                subsample=0.85,
-                colsample_bytree=0.85,
-                scale_pos_weight=positive_weight,
-                eval_metric="logloss",
-                random_state=fold_seed,
-                n_jobs=int(os.environ.get("HAFNET_N_JOBS", "1")),
-            ),
-            LGBMClassifier(
-                n_estimators=300,
-                num_leaves=31,
-                learning_rate=0.04,
-                class_weight="balanced",
-                random_state=fold_seed,
-                verbosity=-1,
-                n_jobs=int(os.environ.get("HAFNET_N_JOBS", "1")),
-                subsample_freq=1,
-            ),
-            CatBoostClassifier(
-                iterations=300,
-                depth=6,
-                learning_rate=0.04,
-                auto_class_weights="Balanced",
-                random_seed=fold_seed,
-                verbose=False,
-                allow_writing_files=False,
-            thread_count=int(os.environ.get("HAFNET_N_JOBS", "1")),
-            ),
+            XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.04, subsample=0.85,
+                colsample_bytree=0.85, scale_pos_weight=positive_weight, eval_metric="logloss",
+                random_state=fold_seed, n_jobs=int(os.environ.get("HAFNET_N_JOBS", "1"))),
+            LGBMClassifier(n_estimators=300, num_leaves=31, learning_rate=0.04,
+                class_weight="balanced", random_state=fold_seed, verbosity=-1,
+                n_jobs=int(os.environ.get("HAFNET_N_JOBS", "1")), subsample_freq=1),
+            CatBoostClassifier(iterations=300, depth=6, learning_rate=0.04,
+                auto_class_weights="Balanced", random_seed=fold_seed, verbose=False,
+                allow_writing_files=False, thread_count=int(os.environ.get("HAFNET_N_JOBS", "1"))),
         ]
 
     stacking_folds = int(parameters.get("stacking_folds", 3))
@@ -473,10 +423,9 @@ def _fit_cs_stacking(
         fold_selected_features.append([dataset.feature_ids[index] for index in selected])
         fold_negatives = max(int(np.sum(y_train[fit_index] == 0)), 1)
         fold_positives = max(int(np.sum(y_train[fit_index] == 1)), 1)
-        fold_positive_weight = fold_negatives / fold_positives
         fold_x = fold_x_train[:, selected]
         holdout_x = fold_x_holdout[:, selected]
-        for model_index, model in enumerate(base_models(fold_seed, fold_positive_weight)):
+        for model_index, model in enumerate(base_models(fold_seed, fold_negatives / fold_positives)):
             model.fit(fold_x, y_train[fit_index])
             oof[holdout_index, model_index] = model.predict_proba(holdout_x)[:, 1]
 
@@ -493,139 +442,73 @@ def _fit_cs_stacking(
 
     meta_learner = LogisticRegression(max_iter=3000, class_weight="balanced", random_state=seed)
     meta_learner.fit(oof, y_train)
-
-    validation_stack = np.column_stack(
-        [model.predict_proba(processed_x_validation[:, selected_features])[:, 1] for model in full_models]
-    )
+    validation_stack = np.column_stack([model.predict_proba(processed_x_validation[:, selected_features])[:, 1] for model in full_models])
     validation_probability = meta_learner.predict_proba(validation_stack)[:, 1]
-
     test_probability = None
     if processed_x_test is not None:
-        test_stack = np.column_stack(
-            [model.predict_proba(processed_x_test[:, selected_features])[:, 1] for model in full_models]
-        )
+        test_stack = np.column_stack([model.predict_proba(processed_x_test[:, selected_features])[:, 1] for model in full_models])
         test_probability = meta_learner.predict_proba(test_stack)[:, 1]
 
-    return _evaluate_probabilities(
-        "cs_stacking",
-        seed,
-        dataset,
-        validation_probability,
-        test_probability,
-        {
-            **parameters,
-            "fold_selected_features": fold_selected_features,
-            "selected_features": [dataset.feature_ids[index] for index in selected_features],
-            "selected_feature_count": int(len(selected_features)),
-            "meta_learner": "balanced_logistic",
-        },
-    )
+    return _evaluate_probabilities("csstacking_adapted", seed, dataset, validation_probability, test_probability,
+        {**parameters, "fold_selected_features": fold_selected_features,
+         "selected_features": [dataset.feature_ids[index] for index in selected_features],
+         "selected_feature_count": int(len(selected_features)), "meta_learner": "balanced_logistic"})
 
 
 def _neural_factory(name: str, n_features: int, parameters: dict[str, Any]) -> Callable[[], torch.nn.Module]:
-    """Build a deep-tabular comparator using its published/reference architecture.
-
-    TabTransformer remains explicitly labelled as a numerical-input adaptation
-    because the two benchmarks contain no categorical columns, whereas the
-    published architecture contextualizes categorical embeddings.
-    """
     width = int(parameters.get("width", 64))
     dropout = float(parameters.get("dropout", 0.1))
-    if name == "tabnet":
-        return lambda: TabNet(
-            n_features,
-            d_hidden=width,
-            n_steps=int(parameters.get("n_steps", 4)),
-            gamma=float(parameters.get("gamma", 1.5)),
-        )
+    if name == "tabnet_numeric_adapted":
+        return lambda: TabNetNumericAdaptation(n_features, d_hidden=width, n_steps=int(parameters.get("n_steps", 4)), gamma=float(parameters.get("gamma", 1.5)))
     if name == "tabtransformer_numeric_adapted":
         heads = 8 if width % 8 == 0 else 4
-        return lambda: TabTransformerNumericAdaptation(
-            n_features,
-            d_model=width,
-            dropout=dropout,
-            layers=int(parameters.get("layers", 4)),
-            heads=heads,
-        )
-    if name == "ft_transformer":
+        return lambda: TabTransformerNumericAdaptation(n_features, d_model=width, dropout=dropout, layers=int(parameters.get("layers", 4)), heads=heads)
+    if name == "ft_transformer_numeric_adapted":
         heads = 8 if width % 8 == 0 else 4
-        return lambda: FTTransformer(
-            n_features,
-            d_model=width,
-            dropout=dropout,
-            layers=int(parameters.get("layers", 3)),
-            heads=heads,
-        )
-    if name == "trompt":
-        return lambda: Trompt(
-            n_features,
-            channels=width,
-            n_prompts=int(parameters.get("num_prompts", width)),
-            n_layers=int(parameters.get("layers", 6)),
-        )
+        return lambda: FTTransformerNumericAdaptation(n_features, d_model=width, dropout=dropout, layers=int(parameters.get("layers", 3)), heads=heads)
+    if name == "trompt_numeric_adapted":
+        return lambda: TromptNumericAdaptation(n_features, channels=width, n_prompts=int(parameters.get("num_prompts", width)), n_layers=int(parameters.get("layers", 6)))
     raise KeyError(name)
 
 
 def _model_logits(model: torch.nn.Module, x: torch.Tensor, name: str) -> torch.Tensor:
     raw = model(x)
-    if name == "trompt":
-        return Trompt.inference_logits(raw)
-    return raw
+    return TromptNumericAdaptation.inference_logits(raw) if name == "trompt_numeric_adapted" else raw
 
 
 def _training_loss(model: torch.nn.Module, x: torch.Tensor, y: torch.Tensor, name: str) -> torch.Tensor:
     raw = model(x)
-    if name == "trompt":
-        # Trompt is supervised at every cell, matching the layer-wise objective
-        # used by the published architecture.
+    if name == "trompt_numeric_adapted":
         targets = y.unsqueeze(1).expand_as(raw)
         return F.binary_cross_entropy_with_logits(raw, targets)
     return F.binary_cross_entropy_with_logits(raw, y)
 
 
-def _fit_neural(
-    name: str,
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any],
-    evaluate_test: bool,
-    device_name: str,
-) -> BaselineResult:
+def _fit_neural(name: str, dataset: PreparedDataset, seed: int, parameters: dict[str, Any], evaluate_test: bool, device_name: str) -> BaselineResult:
     set_seed(seed)
     device = resolve_device(device_name)
-    width = int(parameters.get("width", 64))
-    dropout = float(parameters.get("dropout", 0.1))
     learning_rate = float(parameters.get("learning_rate", 1e-3))
     max_epochs = int(parameters.get("max_epochs", 100))
     patience = int(parameters.get("patience", 15))
     batch_size = int(parameters.get("batch_size", 128))
-
     model = _neural_factory(name, dataset.train.x.shape[1], parameters)().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     x_train = torch.from_numpy(dataset.train.x)
     y_train = torch.from_numpy(dataset.train.y.astype(np.float32))
-    loader = torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(x_train, y_train),
-        batch_size=batch_size,
-        shuffle=True,
-        generator=torch.Generator().manual_seed(seed),
-    )
-
+    loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train, y_train), batch_size=batch_size,
+        shuffle=True, generator=torch.Generator().manual_seed(seed))
     best_pr_auc = -np.inf
     best_state = deepcopy(model.state_dict())
     stale_epochs = 0
     validation_x = torch.from_numpy(dataset.validation.x).to(device)
-
     for _ in range(max_epochs):
         model.train()
         for x_batch, y_batch in loader:
-            x_batch = x_batch.to(device)
-            y_batch = y_batch.to(device)
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
             optimizer.zero_grad(set_to_none=True)
             loss = _training_loss(model, x_batch, y_batch, name)
             loss.backward()
             optimizer.step()
-
         model.eval()
         with torch.no_grad():
             validation_probability = torch.sigmoid(_model_logits(model, validation_x, name)).cpu().numpy()
@@ -638,21 +521,15 @@ def _fit_neural(
             stale_epochs += 1
             if stale_epochs >= patience:
                 break
-
     model.load_state_dict(best_state)
     model.eval()
     with torch.no_grad():
         validation_probability = torch.sigmoid(_model_logits(model, validation_x, name)).cpu().numpy()
-        test_probability = (
-            torch.sigmoid(_model_logits(model, torch.from_numpy(dataset.test.x).to(device), name)).cpu().numpy()
-            if evaluate_test
-            else None
-        )
+        test_probability = torch.sigmoid(_model_logits(model, torch.from_numpy(dataset.test.x).to(device), name)).cpu().numpy() if evaluate_test else None
     return _evaluate_probabilities(name, seed, dataset, validation_probability, test_probability, parameters)
 
 
 def candidate_parameters(name: str, search_config: dict[str, Any], dataset: PreparedDataset) -> list[dict[str, Any]]:
-    """Return the validation search candidates for one comparison method."""
     def expand_grid(specification: dict[str, Any]) -> list[dict[str, Any]]:
         keys = list(specification)
         values = [value if isinstance(value, list) else [value] for value in specification.values()]
@@ -660,65 +537,34 @@ def candidate_parameters(name: str, search_config: dict[str, Any], dataset: Prep
 
     if name in {"logistic", "altman"}:
         return [{}]
-    if name == "cs_stacking":
-        return [
-            {
-                "prefilter_features": int(prefilter),
-                "feature_count": int(count),
-                "feature_selection_folds": int(search_config["cs_stacking"]["feature_selection_folds"]),
-                "stacking_folds": int(search_config["cs_stacking"]["stacking_folds"]),
-            }
-            for prefilter, count in product(
-                search_config["cs_stacking"]["prefilter_features"],
-                search_config["cs_stacking"]["feature_count"],
-            )
-        ]
+    if name == "csstacking_adapted":
+        return [{"prefilter_features": int(prefilter), "feature_count": int(count),
+                 "feature_selection_folds": int(search_config["csstacking_adapted"]["feature_selection_folds"]),
+                 "stacking_folds": int(search_config["csstacking_adapted"]["stacking_folds"])}
+                for prefilter, count in product(search_config["csstacking_adapted"]["prefilter_features"], search_config["csstacking_adapted"]["feature_count"])]
     if name in {"xgboost", "lightgbm", "catboost"}:
         return expand_grid(search_config["classical"][name])
     if name == "smote_xgboost":
         return expand_grid(search_config["classical"]["xgboost"])
-    if name == "two_stage_lightgbm":
-        wrapper = search_config["two_stage_lightgbm"]
-        candidates = []
-        for item in wrapper["base_settings"]:
-            for resampling in wrapper["resampling"]:
-                candidates.append(
-                    {
-                        **dict(item),
-                        "resampling": resampling,
-                        "cv_folds": int(wrapper["cv_folds"]),
-                        "importance_tail_mass": float(wrapper["importance_tail_mass"]),
-                        "accuracy_min_improvement": float(wrapper["accuracy_min_improvement"]),
-                        "wrapper_patience": int(wrapper["wrapper_patience"]),
-                        "wrapper_min_features": int(wrapper["wrapper_min_features"]),
-                    }
-                )
-        return candidates
-    if name in {"tabnet", "tabtransformer_numeric_adapted", "ft_transformer", "trompt"}:
+    if name == "two_stage_lightgbm_adapted":
+        wrapper = search_config["two_stage_lightgbm_adapted"]
+        return [{**dict(item), "resampling": resampling, "cv_folds": int(wrapper["cv_folds"]),
+                 "importance_tail_mass": float(wrapper["importance_tail_mass"]),
+                 "accuracy_min_improvement": float(wrapper["accuracy_min_improvement"]),
+                 "wrapper_patience": int(wrapper["wrapper_patience"]), "wrapper_min_features": int(wrapper["wrapper_min_features"])}
+                for item in wrapper["base_settings"] for resampling in wrapper["resampling"]]
+    if name in {"tabnet_numeric_adapted", "tabtransformer_numeric_adapted", "ft_transformer_numeric_adapted", "trompt_numeric_adapted"}:
         specification = search_config["neural"][name]
         batch_size = 128 if dataset.name == "taiwan" else 256
         candidates = expand_grid({k: v for k, v in specification.items() if k not in {"max_epochs", "patience", "batch_size"}})
-        return [
-            {
-                **candidate,
-                "max_epochs": int(specification.get("max_epochs", 100)),
-                "patience": int(specification.get("patience", 15)),
-                "batch_size": int(specification.get("batch_size", batch_size)),
-            }
-            for candidate in candidates
-        ]
+        return [{**candidate, "max_epochs": int(specification.get("max_epochs", 100)),
+                 "patience": int(specification.get("patience", 15)),
+                 "batch_size": int(specification.get("batch_size", batch_size))} for candidate in candidates]
     raise KeyError(name)
 
 
-def fit_baseline(
-    name: str,
-    dataset: PreparedDataset,
-    seed: int,
-    parameters: dict[str, Any] | None = None,
-    evaluate_test: bool = True,
-    device: str = "auto",
-) -> BaselineResult:
-    """Fit one comparison method under the common data and threshold protocol."""
+def fit_baseline(name: str, dataset: PreparedDataset, seed: int, parameters: dict[str, Any] | None = None,
+                 evaluate_test: bool = True, device: str = "auto") -> BaselineResult:
     if name not in BASELINE_NAMES:
         raise ValueError(f"Unknown comparison method: {name}")
     params = dict(parameters or {})
@@ -730,26 +576,19 @@ def fit_baseline(
         return _fit_tree(name, dataset, seed, params, evaluate_test)
     if name == "smote_xgboost":
         return _fit_smote_xgboost(dataset, seed, params, evaluate_test)
-    if name == "two_stage_lightgbm":
+    if name == "two_stage_lightgbm_adapted":
         return _fit_two_stage_lightgbm(dataset, seed, params, evaluate_test)
-    if name == "cs_stacking":
+    if name == "csstacking_adapted":
         return _fit_cs_stacking(dataset, seed, params, evaluate_test)
     return _fit_neural(name, dataset, seed, params, evaluate_test, device)
 
 
-def select_parameters(
-    name: str,
-    dataset: PreparedDataset,
-    seeds: Iterable[int],
-    search_config: dict[str, Any],
-    return_trials: bool = False,
-    device: str = "auto",
-) -> dict[str, Any] | tuple[dict[str, Any], list[dict[str, Any]]]:
+def select_parameters(name: str, dataset: PreparedDataset, seeds: Iterable[int], search_config: dict[str, Any],
+                      return_trials: bool = False, device: str = "auto") -> dict[str, Any] | tuple[dict[str, Any], list[dict[str, Any]]]:
     """Choose one parameter setting using validation average precision only."""
     candidates = candidate_parameters(name, search_config, dataset)
     if len(candidates) == 1:
         return (candidates[0], []) if return_trials else candidates[0]
-
     selected_seeds = [int(seed) for seed in seeds]
     if not selected_seeds:
         raise ValueError("At least one tuning seed is required.")
@@ -762,27 +601,16 @@ def select_parameters(
             result = fit_baseline(name, dataset, seed, parameters, evaluate_test=False, device=device)
             score_value = float(result.validation["pr_auc"])
             scores.append(score_value)
-            trial_rows.append(
-                {
-                    "model": name,
-                    "candidate_id": candidate_id,
-                    "seed": seed,
-                    "parameters": parameters,
-                    "validation_average_precision": score_value,
-                    "stage1_validation_average_precision": result.parameters.get(
-                        "stage1_validation_average_precision", float("nan")
-                    ),
-                    "wrapper_best_cv_score": result.parameters.get("wrapper_best_cv_score", float("nan")),
-                    "selected_feature_count": result.parameters.get("selected_feature_count", float("nan")),
-                }
-            )
+            trial_rows.append({"model": name, "candidate_id": candidate_id, "seed": seed,
+                "parameters": parameters, "validation_average_precision": score_value,
+                "stage1_validation_average_precision": result.parameters.get("stage1_validation_average_precision", float("nan")),
+                "wrapper_best_cv_score": result.parameters.get("wrapper_best_cv_score", float("nan")),
+                "selected_feature_count": result.parameters.get("selected_feature_count", float("nan"))})
         score = float(np.mean(scores))
         if score > best_score + 1e-12:
             best_score = score
             best_parameters = parameters
-    if return_trials:
-        return dict(best_parameters), trial_rows
-    return dict(best_parameters)
+    return (dict(best_parameters), trial_rows) if return_trials else dict(best_parameters)
 
 
 def applicable_baselines(dataset_name: str) -> tuple[str, ...]:

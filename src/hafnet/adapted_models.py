@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-"""Published deep-tabular comparison architectures used by the benchmark.
+"""Author-adapted numeric comparison architectures used by the benchmark.
 
-The implementations in this module keep the defining architectural mechanisms of
-TabNet, FT-Transformer, and Trompt while exposing a small common PyTorch
-interface for the two all-numerical financial benchmarks. TabTransformer is
-provided separately as an explicitly named numerical-input adaptation because
-the original model contextualizes categorical embeddings and the benchmark
-contains no categorical columns.
+The identifiers in this module explicitly use the ``numeric_adapted`` suffix.
+They retain the defining mechanisms needed for the all-numerical benchmark
+interface, but they are not presented as exact reproductions of the original
+source-study software or data design.
 """
 
 import math
@@ -78,21 +76,10 @@ class _AttentiveTransformer(nn.Module):
         return sparsemax(logits * prior, dim=-1)
 
 
-class TabNet(nn.Module):
-    """TabNet architecture for continuous inputs.
+class TabNetNumericAdaptation(nn.Module):
+    """Numeric-input adaptation retaining TabNet-style sequential attentive masks."""
 
-    This implementation retains sequential attentive masks, sparsemax feature
-    selection, GLU feature transformers, a prior scale, and decision-step
-    aggregation from Arik & Pfister (AAAI 2021).
-    """
-
-    def __init__(
-        self,
-        n_features: int,
-        d_hidden: int = 64,
-        n_steps: int = 4,
-        gamma: float = 1.5,
-    ) -> None:
+    def __init__(self, n_features: int, d_hidden: int = 64, n_steps: int = 4, gamma: float = 1.5) -> None:
         super().__init__()
         if n_steps < 2:
             raise ValueError("TabNet requires at least two decision steps.")
@@ -103,19 +90,14 @@ class TabNet(nn.Module):
         self.input_bn = nn.BatchNorm1d(n_features)
         shared = nn.ModuleList([_GLUBlock(d_hidden, d_hidden), _GLUBlock(d_hidden, d_hidden)])
         self.initial = _FeatureTransformer(n_features, d_hidden, shared)
-        self.transformers = nn.ModuleList(
-            [_FeatureTransformer(n_features, d_hidden, shared) for _ in range(n_steps)]
-        )
-        self.attentive = nn.ModuleList(
-            [_AttentiveTransformer(d_hidden, n_features) for _ in range(n_steps - 1)]
-        )
+        self.transformers = nn.ModuleList([_FeatureTransformer(n_features, d_hidden, shared) for _ in range(n_steps)])
+        self.attentive = nn.ModuleList([_AttentiveTransformer(d_hidden, n_features) for _ in range(n_steps - 1)])
         self.head = nn.Linear(d_hidden, 1, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.input_bn(x)
         prior = torch.ones_like(x)
-        initial = self.initial(x)
-        attention_features = initial
+        attention_features = self.initial(x)
         aggregated = torch.zeros(x.shape[0], self.d_hidden, dtype=x.dtype, device=x.device)
         mask = torch.ones_like(x)
         for step in range(self.n_steps):
@@ -123,8 +105,7 @@ class TabNet(nn.Module):
                 mask = self.attentive[step - 1](attention_features, prior)
                 prior = prior * (self.gamma - mask)
             transformed = self.transformers[step](x * mask)
-            decision = F.relu(transformed)
-            aggregated = aggregated + decision
+            aggregated = aggregated + F.relu(transformed)
             attention_features = transformed
         return self.head(aggregated).squeeze(-1)
 
@@ -160,21 +141,13 @@ class _FTBlock(nn.Module):
             x = identity[:, :1] + self.attn_drop(attn_out)
         else:
             x = identity + self.attn_drop(attn_out)
-        x = x + self.ffn_drop(self.ffn(self.ffn_norm(x)))
-        return x
+        return x + self.ffn_drop(self.ffn(self.ffn_norm(x)))
 
 
-class FTTransformer(nn.Module):
-    """FT-Transformer for continuous features following Gorishniy et al. (2021)."""
+class FTTransformerNumericAdaptation(nn.Module):
+    """Numeric-input adaptation retaining the FT-Transformer tokenization/attention pattern."""
 
-    def __init__(
-        self,
-        n_features: int,
-        d_model: int = 64,
-        dropout: float = 0.1,
-        layers: int = 3,
-        heads: int = 8,
-    ) -> None:
+    def __init__(self, n_features: int, d_model: int = 64, dropout: float = 0.1, layers: int = 3, heads: int = 8) -> None:
         super().__init__()
         if d_model % heads:
             raise ValueError("FT-Transformer embedding width must be divisible by the number of heads.")
@@ -185,9 +158,7 @@ class FTTransformer(nn.Module):
         nn.init.uniform_(self.weight, -bound, bound)
         nn.init.uniform_(self.bias, -bound, bound)
         nn.init.uniform_(self.cls, -bound, bound)
-        self.blocks = nn.ModuleList(
-            [_FTBlock(d_model, heads, dropout, first=(i == 0)) for i in range(layers)]
-        )
+        self.blocks = nn.ModuleList([_FTBlock(d_model, heads, dropout, first=(i == 0)) for i in range(layers)])
         self.output = nn.Sequential(nn.LayerNorm(d_model), nn.ReLU(), nn.Linear(d_model, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -200,24 +171,9 @@ class FTTransformer(nn.Module):
 
 
 class TabTransformerNumericAdaptation(nn.Module):
-    """Numerical-input adaptation of TabTransformer.
+    """Numerical-input adaptation of TabTransformer for all-continuous tables."""
 
-    The published TabTransformer contextualizes categorical embeddings. Both
-    financial benchmarks used here contain continuous features only, so this
-    explicitly labelled adaptation tokenizes each continuous feature before the
-    contextual Transformer while retaining the published contextual-attention
-    principle. It is not presented as a reproduction of the original categorical
-    architecture.
-    """
-
-    def __init__(
-        self,
-        n_features: int,
-        d_model: int = 64,
-        dropout: float = 0.1,
-        layers: int = 4,
-        heads: int = 8,
-    ) -> None:
+    def __init__(self, n_features: int, d_model: int = 64, dropout: float = 0.1, layers: int = 4, heads: int = 8) -> None:
         super().__init__()
         if d_model % heads:
             raise ValueError("TabTransformer width must be divisible by the number of heads.")
@@ -311,21 +267,10 @@ class _TromptDecoder(nn.Module):
         return self.mlp(pooled).squeeze(-1)
 
 
-class Trompt(nn.Module):
-    """Trompt architecture following Chen et al. (ICML 2023).
+class TromptNumericAdaptation(nn.Module):
+    """Numeric-input adaptation retaining the Trompt prompt/column interaction pattern."""
 
-    The model uses layer-specific numerical feature encoders, prompt and column
-    embeddings, prompt-to-column importance matrices, repeated Trompt cells,
-    a shared prompt decoder, and layer-wise predictions.
-    """
-
-    def __init__(
-        self,
-        n_features: int,
-        channels: int = 128,
-        n_prompts: int = 128,
-        n_layers: int = 6,
-    ) -> None:
+    def __init__(self, n_features: int, channels: int = 128, n_prompts: int = 128, n_layers: int = 6) -> None:
         super().__init__()
         self.n_layers = n_layers
         self.prompt = nn.Parameter(torch.empty(n_prompts, channels))

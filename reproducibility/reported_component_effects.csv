@@ -1,0 +1,15 @@
+dataset,contrast,f1_difference,f1_ci_low,f1_ci_high,mcc_difference,mcc_ci_low,mcc_ci_high
+taiwan,HFGE+CB-Focal - Flat+CB-Focal,0.129,0.059,0.221,0.135,0.059,0.232
+taiwan,HFGE+BCE - Flat+BCE,0.089,0.042,0.143,0.092,0.044,0.149
+taiwan,HFGE+CB-Focal - HFGE+BCE,0.073,0.019,0.144,0.076,0.021,0.146
+taiwan,HFGE+class-balanced BCE - HFGE+BCE,0.031,0.001,0.066,0.032,0.002,0.068
+taiwan,HFGE+unweighted focal - HFGE+BCE,0.007,-0.018,0.034,0.007,-0.019,0.034
+taiwan,Full - Core without TCAR,0.016,-0.02,0.054,0.016,-0.021,0.056
+taiwan,Full - Permuted mixed prior,0.031,0.002,0.064,0.031,0.002,0.066
+american,HFGE+CB-Focal - Flat+CB-Focal,0.073,0.054,0.092,0.08,0.06,0.101
+american,HFGE+BCE - Flat+BCE,0.085,0.068,0.104,0.091,0.071,0.112
+american,HFGE+CB-Focal - HFGE+BCE,0.05,0.037,0.064,0.052,0.037,0.068
+american,HFGE+class-balanced BCE - HFGE+BCE,0.028,0.016,0.04,0.029,0.017,0.041
+american,HFGE+unweighted focal - HFGE+BCE,-0.006,-0.016,0.004,-0.006,-0.017,0.005
+american,HFGE+CB-Focal - Equal-weight subgroup mean,0.012,0.0004,0.025,0.012,-0.001,0.026
+american,Full with TCL - Core without TCL,0.014,0.002,0.026,0.015,0.003,0.029

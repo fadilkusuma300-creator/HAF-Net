@@ -1,0 +1,3 @@
+dataset,target_definition,split_protocol,tuning_seeds,evaluation_seeds,configuration_selection,checkpoint_selection,threshold_selection,bootstrap_unit,bootstrap_repetitions
+taiwan,Bankrupt?,fixed stratified 80/10/10; split_seed=42,17;29;53,42;123;456;789;1024;2024;3456;5678;7890;9999,mean validation AP across tuning seeds,validation AP,maximize validation minority-class F1 after checkpoint selection,test row,10000
+american,terminal_failed_proxy,train 1999-2011; validation 2012-2014; test 2015-2018,17;29;53,42;123;456;789;1024;2024;3456;5678;7890;9999,mean validation AP across tuning seeds,validation AP,maximize validation minority-class F1 after checkpoint selection,company identifier (all test rows retained together),10000

@@ -18,11 +18,8 @@ classical:
     depth: [4, 6, 8]
     learning_rate: [0.01, 0.03, 0.05]
 
-# Model-specific grids keep 27 candidates for each neural comparator while
-# tuning architecture-relevant parameters rather than applying a single generic
-# grid to unrelated models.
 neural:
-  tabnet:
+  tabnet_numeric_adapted:
     learning_rate: [0.0001, 0.0005, 0.001]
     width: [32, 64, 128]
     n_steps: [3, 4, 5]
@@ -36,14 +33,14 @@ neural:
     layers: 4
     max_epochs: 100
     patience: 15
-  ft_transformer:
+  ft_transformer_numeric_adapted:
     learning_rate: [0.0001, 0.0005, 0.001]
     width: [32, 64, 128]
     dropout: [0.1, 0.2, 0.3]
     layers: 3
     max_epochs: 100
     patience: 15
-  trompt:
+  trompt_numeric_adapted:
     learning_rate: [0.0001, 0.0005, 0.001]
     width: [64, 128, 192]
     num_prompts: [32, 64, 128]
@@ -51,7 +48,7 @@ neural:
     max_epochs: 100
     patience: 15
 
-two_stage_lightgbm:
+two_stage_lightgbm_adapted:
   base_settings:
     - {n_estimators: 300, num_leaves: 15, learning_rate: 0.03, subsample: 0.85, colsample_bytree: 0.85}
     - {n_estimators: 600, num_leaves: 15, learning_rate: 0.05, subsample: 0.90, colsample_bytree: 0.90}
@@ -64,7 +61,7 @@ two_stage_lightgbm:
   wrapper_patience: 3
   wrapper_min_features: 2
 
-cs_stacking:
+csstacking_adapted:
   prefilter_features: [8, 12, 18]
   feature_count: [4, 6, 8]
   feature_selection_folds: 2

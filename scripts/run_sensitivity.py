@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Evaluate HAF-Net validation performance over selected hyperparameter grids."""
+"""Evaluate HAF-Net validation performance over the prespecified sensitivity grids."""
 from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-import json
-from pathlib import Path
 
 import pandas as pd
 
@@ -21,7 +19,7 @@ DEFAULT_GRIDS = {
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Taiwan HAF-Net hyperparameter sensitivity analysis.")
+    parser = argparse.ArgumentParser(description="Run Taiwan HAF-Net validation sensitivity analysis.")
     parser.add_argument("--config", default="configs/taiwan.yaml")
     parser.add_argument("--parameter", choices=[*DEFAULT_GRIDS, "all"], default="all")
     parser.add_argument("--seeds", nargs="*", type=int, default=None)
@@ -47,14 +45,10 @@ def run_parameter(config: dict, parameter: str, seeds: list[int]) -> pd.DataFram
             dataset = prepare_dataset(current)
             result = train_one_seed(dataset, current, seed=seed, variant="full", evaluate_test=False)
             row = run_to_record(result)
-            row = {key: value for key, value in row.items() if not key.startswith("test_")}
+            row = {key: item for key, item in row.items() if not key.startswith("test_")}
             row["parameter"] = parameter
             row["value"] = float(value)
             rows.append(row)
-            print(
-                f"{parameter}={value:g} | seed={seed} | "
-                f"validation_f1={result.validation['f1']:.4f} | validation_pr_auc={result.validation['pr_auc']:.4f}"
-            )
     return pd.DataFrame(rows)
 
 
@@ -71,16 +65,15 @@ def summarize(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-
-if __name__ == "__main__":
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    from hafnet.provenance import load_selected_config
     from hafnet.utils import ensure_dir, validate_disjoint_seeds, validate_seed_list, write_json
 
     config = load_config(args.config)
-    from hafnet.provenance import load_selected_config
-    config, selected_parameters = load_selected_config(config, args.parameters)
+    config, _ = load_selected_config(config, args.parameters)
     if str(config["dataset"]["name"]).lower() != "taiwan":
-        raise ValueError("The manuscript sensitivity analysis is defined for the Taiwan benchmark.")
+        raise ValueError("Sensitivity analysis is defined for the Taiwan benchmark.")
 
     seeds = validate_seed_list(
         args.seeds if args.seeds is not None else config["training"].get("tuning_seeds", config["training"]["seeds"]),
@@ -89,28 +82,35 @@ if __name__ == "__main__":
     validate_disjoint_seeds(seeds, config["training"].get("seeds", []))
     parameters = list(DEFAULT_GRIDS) if args.parameter == "all" else [args.parameter]
     output = ensure_dir(args.output)
+
     blocks = [run_parameter(config, parameter, seeds) for parameter in parameters]
     runs = pd.concat(blocks, ignore_index=True)
     summary = summarize(runs)
     runs.to_csv(output / "sensitivity_runs.csv", index=False)
     summary.to_csv(output / "sensitivity_summary.csv", index=False)
+
     selected_values = {parameter: float(config["loss"][parameter]) for parameter in parameters}
     write_json(
         output / "sensitivity_manifest.json",
         {
-            "dataset": str(config["dataset"]["name"]).lower(),
+            "dataset": "taiwan",
             "seeds": seeds,
             "grids": {parameter: DEFAULT_GRIDS[parameter] for parameter in parameters},
             "display_metric": "validation_average_precision",
             "parameter_selection": "none; configured reference values are highlighted",
             "selected_architecture": {
-                key: config["model"][key]
-                for key in ("subgroup_dim", "fusion_dim", "dropout")
+                key: config["model"][key] for key in ("subgroup_dim", "fusion_dim", "dropout")
             },
             "test_evaluated": False,
             "reference_values": selected_values,
         },
     )
+
     from plot_sensitivity import make_figure
+
     make_figure(summary, output, selected_values)
     print(summary.to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()

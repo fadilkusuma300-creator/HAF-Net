@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the selected-case attention figure from exported case tables."""
+"""Create the attention-case figure from exported case tables."""
 from __future__ import annotations
 
 import argparse
@@ -19,11 +19,11 @@ ABBREVIATIONS = {
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Plot selected HAF-Net attention cases from exported CSV files.")
+    parser = argparse.ArgumentParser(description="Plot HAF-Net attention cases from exported CSV files.")
     parser.add_argument("--attention", required=True, help="case_attention.csv")
     parser.add_argument("--features", required=True, help="case_features.csv")
-    parser.add_argument("--output", default=None, help="Output directory; defaults to the attention CSV directory")
-    parser.add_argument("--prefix", default="attention_cases", help="Output file stem")
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--prefix", default="attention_cases")
     return parser.parse_args(argv)
 
 
@@ -39,18 +39,20 @@ def make_figure(
 ) -> tuple[Path, Path]:
     group_columns = [column for column in attention_frame.columns if column not in EXCLUDED_COLUMNS]
     if len(attention_frame) != 3:
-        raise ValueError("The manuscript case figure requires exactly three selected cases.")
+        raise ValueError("The case figure requires exactly three selected cases.")
     if len(group_columns) != 4:
-        raise ValueError("The manuscript case figure requires four level-1 attention groups.")
+        raise ValueError("The case figure requires four level-1 attention groups.")
 
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Tinos", "Times New Roman", "Times", "DejaVu Serif"],
-        "font.size": 8.6,
-        "axes.linewidth": 0.8,
-        "xtick.major.width": 0.8,
-        "ytick.major.width": 0.8,
-    })
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Tinos", "Times New Roman", "Times", "DejaVu Serif"],
+            "font.size": 8.6,
+            "axes.linewidth": 0.8,
+            "xtick.major.width": 0.8,
+            "ytick.major.width": 0.8,
+        }
+    )
     figure, axes = plt.subplots(2, 3, figsize=(10.45, 4.48), squeeze=False)
     dominant_color = "#c43d2b"
     neutral_color = "#ededed"
@@ -65,7 +67,9 @@ def make_figure(
         bars = axes[0, column].bar(
             np.arange(4), values, width=0.58, color=colors, edgecolor="#a9a9a9", linewidth=0.65
         )
-        axes[0, column].set_xticks(np.arange(4), [ABBREVIATIONS.get(name, name) for name in group_columns])
+        axes[0, column].set_xticks(
+            np.arange(4), [ABBREVIATIONS.get(name, name) for name in group_columns]
+        )
         axes[0, column].set_ylim(0.0, 0.65)
         actual_group = _clean_group_name(str(row["top_group"]))
         axes[0, column].set_title(
@@ -97,9 +101,10 @@ def make_figure(
         values_feature = block["standardized_value"].to_numpy(dtype=float)
         positions = np.arange(3)
         colors_feature = [positive_color if value >= 0 else negative_color for value in values_feature]
-        axes[1, column].barh(positions, values_feature, color=colors_feature, height=0.56, edgecolor="none")
-        labels = [str(label) for label in block["feature_label"]]
-        axes[1, column].set_yticks(positions, labels, fontsize=7.9)
+        axes[1, column].barh(
+            positions, values_feature, color=colors_feature, height=0.56, edgecolor="none"
+        )
+        axes[1, column].set_yticks(positions, [str(label) for label in block["feature_label"]], fontsize=7.9)
         axes[1, column].invert_yaxis()
         axes[1, column].axvline(0.0, color="#777777", linewidth=0.75)
         limit = max(3.0, float(np.ceil((np.max(np.abs(values_feature)) + 0.15) * 2) / 2))

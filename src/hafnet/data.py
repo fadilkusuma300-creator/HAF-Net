@@ -157,7 +157,7 @@ def _split_american(frame: pd.DataFrame, config: dict[str, Any]) -> tuple[np.nda
     train_low, train_high = config.get("train_years", [1999, 2011])
     validation_low, validation_high = config.get("validation_years", [2012, 2014])
     test_low, test_high = config.get("test_years", [2015, 2018])
-    boundaries = integral_values([train_low, train_high, validation_low, validation_high, test_low, test_high], name="Year boundaries")
+    integral_values([train_low, train_high, validation_low, validation_high, test_low, test_high], name="Year boundaries")
     if not (train_low <= train_high < validation_low <= validation_high < test_low <= test_high):
         raise ValueError("Year ranges must be ordered: training, validation, then test.")
     years = integral_values(frame["year"], name="Fiscal years")
@@ -179,7 +179,7 @@ def prepare_dataset(config: dict[str, Any]) -> PreparedDataset:
     dataset_path = Path(dataset_config["path"])
     if not dataset_path.exists():
         raise FileNotFoundError(
-            f"Dataset file not found: {dataset_path}. See data/README.md or run scripts/download_data.py."
+            f"Dataset file not found: {dataset_path}. See DATASETS.md or run scripts/download_data.py."
         )
 
     expected_hash = dataset_config.get("sha256")

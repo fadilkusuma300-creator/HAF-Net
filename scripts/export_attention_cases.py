@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
-"""Export targeted Taiwan positive cases and their group-attention profiles."""
+"""Export selected Taiwan positive cases and their group-attention profiles."""
 from __future__ import annotations
 
 import argparse
-import json
+import hashlib
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
 
+from hafnet.attention_cases import resolve_checkpoint_seed, select_cases
 from hafnet.config import load_config
 from hafnet.data import prepare_dataset
-from hafnet.attention_cases import resolve_checkpoint_seed, select_cases
 from hafnet.model import HAFNet
 from hafnet.trainer import predict_probabilities
 from hafnet.utils import ensure_dir, resolve_device, write_json
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export positive-case group attention from a trained Taiwan HAF-Net model.")
+    parser = argparse.ArgumentParser(
+        description="Export positive-case group attention from a trained Taiwan HAF-Net model."
+    )
     parser.add_argument("--config", default="configs/taiwan.yaml")
-    parser.add_argument("--checkpoint", required=True, help="State dictionary produced by scripts/run_experiment.py")
-    parser.add_argument("--parameters", required=True, help="Selected HAF-Net settings used for the checkpoint")
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--parameters", required=True)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--output", default="outputs/attention_cases")
     return parser.parse_args()
@@ -38,13 +40,14 @@ def build_model(dataset, config, checkpoint: Path, device: torch.device) -> HAFN
         use_residual=True,
     )
     from hafnet.provenance import data_contract
+
     bundle = torch.load(checkpoint, map_location="cpu", weights_only=True)
     if not isinstance(bundle, dict) or "state_dict" not in bundle:
-        raise ValueError("A checkpoint bundle with data/configuration metadata is required.")
+        raise ValueError("A HAF-Net checkpoint bundle is required.")
     if bundle["data_contract"] != data_contract(config) or bundle["config"]["model"] != config["model"]:
         raise ValueError("Checkpoint and requested data/model configuration differ.")
     if bundle["variant"] != "full":
-        raise ValueError("The case figure requires the full HAF-Net configuration.")
+        raise ValueError("Attention-case export requires the full HAF-Net configuration.")
     expected_seed = resolve_checkpoint_seed(checkpoint, None)
     if int(bundle["seed"]) != expected_seed:
         raise ValueError("Checkpoint seed metadata and filename disagree.")
@@ -68,10 +71,11 @@ def export_tables(
     feature_rows: list[dict] = []
 
     for case_number, (row_index, requested_group, fallback) in enumerate(selected, start=1):
+        case_label = f"Case {chr(64 + case_number)}"
         weights = attention[row_index]
         top_group = int(np.argmax(weights))
         attention_row = {
-            "case": f"Case {case_number}",
+            "case": case_label,
             "test_row_id": int(dataset.test.row_ids[row_index]),
             "top_group": group_names[top_group],
             "requested_group": group_names[requested_group],
@@ -87,7 +91,7 @@ def export_tables(
             feature_position = indices[int(local_position)]
             feature_rows.append(
                 {
-                    "case": f"Case {case_number}",
+                    "case": case_label,
                     "requested_group": group_names[requested_group],
                     "fallback_used": bool(fallback),
                     "rank": rank,
@@ -105,14 +109,14 @@ def export_tables(
     return attention_frame, feature_frame
 
 
-
-if __name__ == "__main__":
+def main() -> None:
     args = parse_args()
     config = load_config(args.config)
     from hafnet.provenance import load_selected_config
-    config, selected_parameters = load_selected_config(config, args.parameters)
+
+    config, _ = load_selected_config(config, args.parameters)
     if str(config["dataset"]["name"]).lower() != "taiwan":
-        raise ValueError("The case-analysis figure is defined for the Taiwan benchmark.")
+        raise ValueError("Attention-case analysis is defined for the Taiwan benchmark.")
 
     checkpoint = Path(args.checkpoint)
     selection_seed = resolve_checkpoint_seed(checkpoint, args.seed)
@@ -131,15 +135,18 @@ if __name__ == "__main__":
         {
             "split": "test",
             "target_class": 1,
-            "selection_rule": "highest attention among positives dominated by each prespecified group; if none exists, highest attention for that group among remaining positives",
+            "selection_rule": (
+                "highest attention among positives dominated by each prespecified group; "
+                "if none exists, highest attention for that group among remaining positives"
+            ),
             "seed": selection_seed,
             "checkpoint": str(checkpoint),
-            "checkpoint_sha256": __import__("hashlib").sha256(checkpoint.read_bytes()).hexdigest(),
+            "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
             "model_parameters": config["model"],
-            "target_groups": [dataset.hierarchy.groups[group_index].name for group_index in (0, 1, 2)],
+            "target_groups": [dataset.hierarchy.groups[index].name for index in (0, 1, 2)],
             "selection": [
                 {
-                    "case": case_number,
+                    "case": f"Case {chr(64 + case_number)}",
                     "target_group": dataset.hierarchy.groups[group_index].name,
                     "row_id": int(dataset.test.row_ids[row_index]),
                     "dominant_group": dataset.hierarchy.groups[int(np.argmax(attention[row_index]))].name,
@@ -150,5 +157,10 @@ if __name__ == "__main__":
         },
     )
     from plot_attention_cases import make_figure
+
     make_figure(attention_frame, feature_frame, output)
     print(attention_frame.to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()

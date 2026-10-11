@@ -1,0 +1,5 @@
+dataset,metric,mean_difference,ci_low,ci_high,holm_adjusted_p
+taiwan,F1,0.054,0.018,0.098,0.0078
+taiwan,MCC,0.056,0.02,0.101,0.0078
+american,F1,0.039,0.017,0.063,0.0078
+american,MCC,0.056,0.032,0.082,0.0078

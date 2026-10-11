@@ -4,6 +4,6 @@ __pycache__/
 *.egg-info/
 outputs/
 figures/
-data/derived/*
-!data/derived/README.md
+data/raw/
+data/derived/
 .DS_Store

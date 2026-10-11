@@ -21,10 +21,10 @@ PARAMETER_LABELS = {
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot HAF-Net validation sensitivity from a summary CSV.")
-    parser.add_argument("--summary", required=True, help="CSV written by scripts/run_sensitivity.py")
-    parser.add_argument("--manifest", default=None, help="Optional sensitivity_manifest.json")
-    parser.add_argument("--output", default=None, help="Output directory; defaults to the summary directory")
-    parser.add_argument("--prefix", default="sensitivity", help="Output file stem")
+    parser.add_argument("--summary", required=True)
+    parser.add_argument("--manifest", default=None)
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--prefix", default="sensitivity")
     return parser.parse_args(argv)
 
 
@@ -42,9 +42,6 @@ def _shared_y_limits(values: np.ndarray) -> tuple[float, float, np.ndarray]:
     values = values[np.isfinite(values)]
     if not len(values):
         return 0.0, 1.0, np.linspace(0.0, 1.0, 6)
-    # The manuscript figure uses a common vertical scale across panels. Use a
-    # two-decimal tick spacing whenever practical so regenerated figures retain
-    # the same compact visual rhythm without clipping future experiment values.
     step = 0.02
     lower = np.floor((values.min() - 0.008) / step) * step
     upper = np.ceil((values.max() + 0.008) / step) * step
@@ -70,30 +67,24 @@ def make_figure(
     if not parameters:
         raise ValueError("Sensitivity summary does not contain any supported parameter.")
 
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Tinos", "Times New Roman", "Times", "DejaVu Serif"],
-        "font.size": 9.0,
-        "axes.linewidth": 0.8,
-        "xtick.major.width": 0.8,
-        "ytick.major.width": 0.8,
-    })
-    figure, axes = plt.subplots(
-        1,
-        len(parameters),
-        figsize=(10.12, 2.28),
-        sharey=True,
-        squeeze=False,
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Tinos", "Times New Roman", "Times", "DejaVu Serif"],
+            "font.size": 9.0,
+            "axes.linewidth": 0.8,
+            "xtick.major.width": 0.8,
+            "ytick.major.width": 0.8,
+        }
     )
+    figure, axes = plt.subplots(1, len(parameters), figsize=(10.12, 2.28), sharey=True, squeeze=False)
     axes = axes[0]
-    all_means = summary["validation_pr_auc_mean"].to_numpy(dtype=float)
-    y_min, y_max, y_ticks = _shared_y_limits(all_means)
+    y_min, y_max, y_ticks = _shared_y_limits(summary["validation_pr_auc_mean"].to_numpy(dtype=float))
 
     line_color = "#3b6fb6"
     selected_color = "#d14a2f"
     for panel_index, (axis, parameter) in enumerate(zip(axes, parameters)):
-        block = summary[summary["parameter"].astype(str) == parameter].copy()
-        block = block.sort_values("value").reset_index(drop=True)
+        block = summary[summary["parameter"].astype(str) == parameter].copy().sort_values("value").reset_index(drop=True)
         means = block["validation_pr_auc_mean"].to_numpy(dtype=float)
         if parameter == "beta":
             x = np.arange(len(block), dtype=float)
@@ -117,14 +108,12 @@ def make_figure(
         if selected_value is not None:
             mask = np.isclose(block["value"].to_numpy(dtype=float), float(selected_value))
             if np.any(mask):
-                idx = int(np.flatnonzero(mask)[0])
-                axis.scatter(x[idx], means[idx], s=28, color=selected_color, zorder=4)
+                index = int(np.flatnonzero(mask)[0])
+                axis.scatter(x[index], means[index], s=28, color=selected_color, zorder=4)
 
         if x_labels is not None:
             axis.set_xticks(x, x_labels)
-        elif parameter == "lambda_tcar":
-            axis.set_xticks(block["value"].to_numpy(dtype=float), [f"{v:.2f}" for v in block["value"]])
-        elif parameter == "rho":
+        elif parameter in {"lambda_tcar", "rho"}:
             axis.set_xticks(block["value"].to_numpy(dtype=float), [f"{v:.2f}" for v in block["value"]])
         else:
             axis.set_xticks(block["value"].to_numpy(dtype=float), [f"{v:g}" for v in block["value"]])
@@ -132,8 +121,16 @@ def make_figure(
         axis.set_ylim(y_min, y_max)
         axis.set_yticks(y_ticks)
         axis.set_xlabel(PARAMETER_LABELS[parameter], labelpad=2)
-        axis.text(0.02, 0.98, f"({chr(97 + panel_index)})", transform=axis.transAxes,
-                  ha="left", va="top", fontsize=9.2, fontweight="bold")
+        axis.text(
+            0.02,
+            0.98,
+            f"({chr(97 + panel_index)})",
+            transform=axis.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9.2,
+            fontweight="bold",
+        )
         axis.grid(axis="y", color="#dedede", linewidth=0.55)
         axis.spines["top"].set_visible(False)
         axis.spines["right"].set_visible(False)
